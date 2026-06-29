@@ -1,0 +1,35 @@
+# SmartML - No-Code AI Platform for Data Science
+
+## Overview
+SmartML is a powerful no-code platform that enables users to perform data analysis, build machine learning models, and generate sales predictions without writing a single line of code.
+
+## Features
+- 🔐 Authentication (Login/Register)
+- 📊 Upload CSV/Excel datasets
+- ✅ Automatic data validation and preprocessing
+- 📈 Interactive visualizations
+- 🤖 AI-powered sales predictions (FCFA)
+- 🧠 Model training (Linear Regression, Random Forest)
+- 📤 Export results (CSV, Excel, PDF)
+
+## Tech Stack
+- **Frontend**: Next.js 14, TypeScript, Tailwind CSS, Recharts
+- **Backend**: FastAPI, Python 3.12
+- **Database**: MySQL
+- **ML**: Scikit-learn, Pandas, NumPy
+
+## Installation
+
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+- MySQL (WampServer recommended)
+
+### Backend Setup
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env  # Configure your database
+python app/main.py
