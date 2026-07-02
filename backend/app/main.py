@@ -35,7 +35,7 @@ class Token(BaseModel):
 
 # ============ CONFIGURATION ============
 # Use environment variables for PostgreSQL
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-us-east-1.pooler.supabase.com:5432/postgres")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres.[smart-platform]:[Smart-ml123]@aws-0-us-east-1.pooler.supabase.com:5432/postgres")
 SECRET_KEY = os.getenv("SECRET_KEY", "your-super-secret-key-change-this-in-production")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
