@@ -1,59 +1,43 @@
 # Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
 venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
 env/
 ENV/
 .venv
-pip-log.txt
-pip-delete-this-directory.txt
-.pytest_cache/
-.mypy_cache/
 
-# Backend - Sensitive Files
-backend/uploads/
-backend/models/
-backend/smartml.db
-backend/*.db
-backend/__pycache__/
-backend/venv/
-backend/.env
-backend/.env.local
-backend/.env.*
-backend/*.pkl
-backend/*.joblib
+# Node
+node_modules/
+.next/
+out/
+build/
+dist/
 
-# Frontend - Sensitive Files
-frontend-next/node_modules/
-frontend-next/.next/
-frontend-next/out/
-frontend-next/build/
-frontend-next/dist/
-frontend-next/.env.local
-frontend-next/.env*.local
-frontend-next/package-lock.json
-frontend-next/yarn.lock
+# Environment Files
+.env
+.env.local
+.env.*.local
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
-.DS_Store
-
-# Logs
-*.log
-logs/
 
 # OS
+.DS_Store
 Thumbs.db
-desktop.ini
 
-# Database files
-*.sqlite
-*.db
-*.sqlite3
+# Backend
+backend/uploads/
+backend/models/
+backend/*.db
+backend/__pycache__/
+
+# Frontend
+frontend-next/node_modules/
+frontend-next/.next/
+frontend-next/out/

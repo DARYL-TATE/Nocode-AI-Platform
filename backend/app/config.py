@@ -1,37 +1,26 @@
-from pydantic_settings import BaseSettings
-from typing import List
 import os
+from typing import List
+from dotenv import load_dotenv
 
-class Settings(BaseSettings):
-    # MySQL Configuration
-    MYSQL_USER: str = "root"
-    MYSQL_PASSWORD: str = ""
-    MYSQL_HOST: str = "localhost"
-    MYSQL_PORT: str = "3306"
-    MYSQL_DATABASE: str = "smartml_db"
+load_dotenv()
+
+class Settings:
+    # Database Configuration - PostgreSQL
+    DATABASE_URL: str = os.getenv(
+        "DATABASE_URL",
+        "postgresql://postgres.[smart-platform]:[Smart-ml123]@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
+    )
     
-    # JWT Configuration
-    SECRET_KEY: str = "your-super-secret-key-change-this-in-production"
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    # Security
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-super-secret-key-change-this-in-production")
+    ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     
-    # File paths
-    UPLOAD_DIR: str = "./uploads"
-    MODEL_DIR: str = "./models"
+    # File Upload
+    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./uploads")
+    MODEL_DIR: str = os.getenv("MODEL_DIR", "./models")
     
     # CORS
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:3001"
-    
-    @property
-    def DATABASE_URL(self) -> str:
-        """Create MySQL connection URL"""
-        return f"mysql+pymysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}?charset=utf8mb4"
-    
-    @property
-    def cors_origins_list(self) -> List[str]:
-        """Convert CORS_ORIGINS string to list"""
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
-    
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    CORS_ORIGINS: List[str] = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
 
 settings = Settings()
