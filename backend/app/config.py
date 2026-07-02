@@ -8,7 +8,7 @@ class Settings:
     # Database Configuration - PostgreSQL
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",
-        "postgresql://postgres.xpbtnbiykjakkypdpbwr:Smaert-PLATFORM@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
+        "postgresql://postgres.xpbtnbiykjakkypdpbwr:SMaert-PLat@aws-0-eu-west-1.pooler.supabase.com:5432/postgres"
     )
     
     # Security
