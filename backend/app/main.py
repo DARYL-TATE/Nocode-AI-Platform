@@ -1,9 +1,9 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, JSON, BigInteger
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, JSON, BigInteger
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from pydantic import BaseModel
@@ -14,6 +14,10 @@ import os
 import uvicorn
 import hashlib
 import secrets
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # ============ PYDANTIC MODELS ============
 class UserCreate(BaseModel):
@@ -30,23 +34,28 @@ class Token(BaseModel):
     token_type: str
 
 # ============ CONFIGURATION ============
-MYSQL_USER = "root"
-MYSQL_PASSWORD = ""
-MYSQL_HOST = "localhost"
-MYSQL_PORT = "3306"
-MYSQL_DATABASE = "smartml_db"
-
-DATABASE_URL = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8mb4"
-
-SECRET_KEY = "your-super-secret-key-change-this"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-UPLOAD_DIR = "./uploads"
+# Use environment variables for PostgreSQL
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-us-east-1.pooler.supabase.com:5432/postgres")
+SECRET_KEY = os.getenv("SECRET_KEY", "your-super-secret-key-change-this-in-production")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # ============ DATABASE ============
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    pool_size=5,
+    max_overflow=10,
+    echo=False
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -103,6 +112,13 @@ class Validation(Base):
 Base.metadata.create_all(bind=engine)
 
 # ============ HELPER FUNCTIONS ============
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 def authenticate_user(db, email, password):
     user = db.query(User).filter(User.email == email).first()
     if not user:
@@ -116,13 +132,6 @@ def create_access_token(data):
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security), 
@@ -175,13 +184,13 @@ def validate_dataset(df):
 def formatFCFA(amount):
     return f"{int(amount):,} FCFA".replace(",", " ")
 
-# ============ CREATE FASTAPI APP ============
-app = FastAPI(title="SmartML API")
+# ============ FASTAPI APP ============
+app = FastAPI(title="SmartML API", version="1.0.0")
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -191,6 +200,10 @@ app.add_middleware(
 @app.get("/")
 def root():
     return {"message": "SmartML API Running", "status": "online"}
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
 
 @app.post("/api/auth/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -671,6 +684,7 @@ def startup():
     try:
         db = SessionLocal()
         db.execute("SELECT 1")
+        print("✅ Database connection successful")
         
         admin = db.query(User).filter(User.email == "admin@smartml.com").first()
         if not admin:
@@ -695,11 +709,8 @@ def startup():
             print("="*50 + "\n")
         db.close()
     except Exception as e:
-        print(f"\n⚠️ Warning: {e}")
-        print("Make sure WampServer is running and database 'smartml_db' exists")
-        print("1. Start WampServer (green icon)")
-        print("2. Go to http://localhost/phpmyadmin")
-        print("3. Create database: smartml_db\n")
+        print(f"\n⚠️ Database connection error: {e}")
+        print("Make sure DATABASE_URL is set correctly in environment variables\n")
     
     print("🚀 SmartML API Running on http://localhost:8000")
     print("📚 API Docs: http://localhost:8000/docs\n")
