@@ -205,6 +205,43 @@ def root():
 def health():
     return {"status": "healthy"}
 
+# ============ DEBUG ENDPOINT (REMOVE AFTER TESTING) ============
+@app.get("/debug-env")
+def debug_env():
+    """Debug endpoint to check environment variables"""
+    import os
+    # Get the DATABASE_URL (mask the password for security)
+    db_url = os.getenv("DATABASE_URL", "NOT SET")
+    
+    # Mask password in DATABASE_URL
+    if db_url != "NOT SET":
+        # Try to mask the password
+        try:
+            parts = db_url.split('@')
+            if len(parts) > 1:
+                # Hide password part
+                prefix_parts = parts[0].split('://')
+                if len(prefix_parts) > 1:
+                    masked = f"{prefix_parts[0]}://****:****@{parts[1]}"
+                else:
+                    masked = f"****:****@{parts[1]}"
+            else:
+                masked = db_url
+        except:
+            masked = "Could not mask"
+    else:
+        masked = "NOT SET"
+    
+    return {
+        "DATABASE_URL": masked,
+        "DATABASE_URL_IS_SET": db_url != "NOT SET",
+        "SECRET_KEY": "SET" if os.getenv("SECRET_KEY") else "NOT SET",
+        "ALGORITHM": os.getenv("ALGORITHM", "NOT SET"),
+        "CORS_ORIGINS": os.getenv("CORS_ORIGINS", "NOT SET"),
+        "ENV_FILE_EXISTS": str(os.path.exists(".env")),
+        "ALL_ENV_VARS": {k: "***" if "PASSWORD" in k or "SECRET" in k else v for k, v in os.environ.items() if not k.startswith("_")}
+    }
+
 @app.post("/api/auth/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
     try:
