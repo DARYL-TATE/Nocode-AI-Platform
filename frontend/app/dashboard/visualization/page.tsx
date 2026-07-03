@@ -15,6 +15,7 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 
+// ============ INTERFACES ============
 interface Dataset {
   id: number;
   name: string;
@@ -48,7 +49,9 @@ interface ErrorResponse {
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
+// ============ COMPONENT ============
 export default function VisualizationPage() {
+  // ============ STATE ============
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
   const [visualizationData, setVisualizationData] = useState<VisualizationData | null>(null);
@@ -56,6 +59,7 @@ export default function VisualizationPage() {
   const [loadingData, setLoadingData] = useState<boolean>(false);
   const [chartType, setChartType] = useState<'line' | 'bar' | 'area'>('line');
 
+  // ============ FORMAT FCFA ============
   const formatFCFA = (amount: number): string => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
@@ -65,6 +69,27 @@ export default function VisualizationPage() {
     }).format(amount).replace('XAF', 'FCFA');
   };
 
+  // ============ TOOLTIP FORMATTER ============
+  const formatTooltipValue = (value: number | string | undefined): string => {
+    if (typeof value === 'number') {
+      return formatFCFA(value);
+    }
+    return String(value || '');
+  };
+
+  // ============ Y-AXIS TICK FORMATTER ============
+  const formatYAxisTick = (value: number | string | undefined): string => {
+    const numValue = typeof value === 'number' ? value : 0;
+    if (numValue >= 1000000) {
+      return `${(numValue / 1000000).toFixed(1)}M`;
+    }
+    if (numValue >= 1000) {
+      return `${(numValue / 1000).toFixed(0)}K`;
+    }
+    return String(numValue);
+  };
+
+  // ============ FETCH DATASETS ============
   const fetchDatasets = useCallback(async (): Promise<void> => {
     try {
       const response = await api.get('/api/datasets/');
@@ -87,6 +112,7 @@ export default function VisualizationPage() {
     }
   }, []);
 
+  // ============ FETCH VISUALIZATION DATA ============
   const fetchVisualizationData = async (datasetId: number): Promise<void> => {
     setLoadingData(true);
     try {
@@ -110,6 +136,7 @@ export default function VisualizationPage() {
     }
   };
 
+  // ============ PROCESS DATA ============
   const processDataForVisualization = (data: any[]): VisualizationData => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const salesByMonth = months.map((month, index) => {
@@ -163,6 +190,7 @@ export default function VisualizationPage() {
     };
   };
 
+  // ============ HANDLERS ============
   const handleDatasetChange = async (datasetId: number): Promise<void> => {
     const dataset = datasets.find(d => d.id === datasetId);
     setSelectedDataset(dataset || null);
@@ -185,6 +213,7 @@ export default function VisualizationPage() {
 
     try {
       const wb = XLSX.utils.book_new();
+      
       const salesData = visualizationData.salesByMonth.map(s => ({
         'Month': s.month,
         'Sales (FCFA)': formatFCFA(s.sales)
@@ -218,17 +247,20 @@ export default function VisualizationPage() {
       const kpiSheet = XLSX.utils.aoa_to_sheet(kpiData);
       XLSX.utils.book_append_sheet(wb, kpiSheet, 'KPIs');
       
-      XLSX.writeFile(wb, `visualization_${new Date().toISOString().split('T')[0]}.xlsx`);
+      const filename = `visualization_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, filename);
       toast.success('Exported to Excel!');
     } catch (error) {
       toast.error('Failed to export');
     }
   };
 
+  // ============ EFFECT ============
   useEffect(() => {
     fetchDatasets();
   }, [fetchDatasets]);
 
+  // ============ LOADING ============
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -240,8 +272,10 @@ export default function VisualizationPage() {
     );
   }
 
+  // ============ RENDER ============
   return (
     <div className="max-w-7xl mx-auto">
+      {/* Header */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Data Visualization</h1>
@@ -267,6 +301,7 @@ export default function VisualizationPage() {
         </div>
       </div>
 
+      {/* Dataset Selector */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Select Dataset
@@ -293,6 +328,7 @@ export default function VisualizationPage() {
         </div>
       </div>
 
+      {/* No Datasets */}
       {datasets.length === 0 && (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
           <FiDatabase className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -307,6 +343,7 @@ export default function VisualizationPage() {
         </div>
       )}
 
+      {/* Loading Data */}
       {loadingData && datasets.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
           <FiLoader className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-spin" />
@@ -314,8 +351,10 @@ export default function VisualizationPage() {
         </div>
       )}
 
+      {/* Visualization Content */}
       {!loadingData && visualizationData && datasets.length > 0 && (
         <div className="space-y-6">
+          {/* KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
               <div className="flex items-center gap-2 mb-2">
@@ -347,6 +386,7 @@ export default function VisualizationPage() {
             </div>
           </div>
 
+          {/* Chart Type Selector */}
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h3 className="font-semibold text-gray-900">Sales Trend Analysis</h3>
@@ -379,6 +419,7 @@ export default function VisualizationPage() {
             </div>
           </div>
 
+          {/* Sales Chart */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <FiBarChart2 className="w-5 h-5 text-blue-600" />
@@ -390,12 +431,8 @@ export default function VisualizationPage() {
                   <LineChart data={visualizationData.salesByMonth}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
-                    <YAxis tickFormatter={(value) => {
-                      if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                      if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
-                      return value;
-                    }} />
-                    <Tooltip formatter={(value: number) => formatFCFA(value)} />
+                    <YAxis tickFormatter={formatYAxisTick} />
+                    <Tooltip formatter={formatTooltipValue} />
                     <Legend />
                     <Line type="monotone" dataKey="sales" stroke="#3b82f6" strokeWidth={2} name="Sales" dot={{ fill: '#3b82f6', r: 4 }} />
                   </LineChart>
@@ -404,12 +441,8 @@ export default function VisualizationPage() {
                   <BarChart data={visualizationData.salesByMonth}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
-                    <YAxis tickFormatter={(value) => {
-                      if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                      if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
-                      return value;
-                    }} />
-                    <Tooltip formatter={(value: number) => formatFCFA(value)} />
+                    <YAxis tickFormatter={formatYAxisTick} />
+                    <Tooltip formatter={formatTooltipValue} />
                     <Legend />
                     <Bar dataKey="sales" fill="#3b82f6" name="Sales" radius={[8, 8, 0, 0]} />
                   </BarChart>
@@ -418,12 +451,8 @@ export default function VisualizationPage() {
                   <AreaChart data={visualizationData.salesByMonth}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
-                    <YAxis tickFormatter={(value) => {
-                      if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                      if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
-                      return value;
-                    }} />
-                    <Tooltip formatter={(value: number) => formatFCFA(value)} />
+                    <YAxis tickFormatter={formatYAxisTick} />
+                    <Tooltip formatter={formatTooltipValue} />
                     <Legend />
                     <Area type="monotone" dataKey="sales" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} name="Sales" />
                   </AreaChart>
@@ -432,6 +461,7 @@ export default function VisualizationPage() {
             </div>
           </div>
 
+          {/* Gender and Age Distribution */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -481,6 +511,21 @@ export default function VisualizationPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* No Data */}
+      {!loadingData && datasets.length > 0 && !visualizationData && (
+        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
+          <FiAlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Data Available</h3>
+          <p className="text-gray-500">The selected dataset has no data to visualize.</p>
+          <button
+            onClick={handleRefresh}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Try Again
+          </button>
         </div>
       )}
     </div>
