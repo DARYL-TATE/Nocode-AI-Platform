@@ -49,6 +49,9 @@ interface ErrorResponse {
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
+// ============ TYPE FOR RECHARTS VALUE ============
+type RechartsValue = string | number | undefined | readonly (string | number)[];
+
 // ============ COMPONENT ============
 export default function VisualizationPage() {
   // ============ STATE ============
@@ -70,16 +73,25 @@ export default function VisualizationPage() {
   };
 
   // ============ TOOLTIP FORMATTER ============
-  const formatTooltipValue = (value: number | string | undefined): string => {
+  const formatTooltipValue = (value: RechartsValue): string => {
     if (typeof value === 'number') {
       return formatFCFA(value);
     }
-    return String(value || '');
+    if (typeof value === 'string') {
+      return value;
+    }
+    return '';
   };
 
   // ============ Y-AXIS TICK FORMATTER ============
-  const formatYAxisTick = (value: number | string | undefined): string => {
-    const numValue = typeof value === 'number' ? value : 0;
+  const formatYAxisTick = (value: RechartsValue): string => {
+    let numValue = 0;
+    if (typeof value === 'number') {
+      numValue = value;
+    } else if (typeof value === 'string') {
+      numValue = parseFloat(value) || 0;
+    }
+    
     if (numValue >= 1000000) {
       return `${(numValue / 1000000).toFixed(1)}M`;
     }
@@ -419,7 +431,7 @@ export default function VisualizationPage() {
             </div>
           </div>
 
-          {/* Sales Chart */}
+          {/* Sales Chart - Line */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <FiBarChart2 className="w-5 h-5 text-blue-600" />
@@ -485,7 +497,7 @@ export default function VisualizationPage() {
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip formatter={formatTooltipValue} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -503,7 +515,7 @@ export default function VisualizationPage() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" />
                     <YAxis dataKey="ageGroup" type="category" width={80} />
-                    <Tooltip />
+                    <Tooltip formatter={formatTooltipValue} />
                     <Legend />
                     <Bar dataKey="count" fill="#10b981" name="Number of Customers" radius={[0, 8, 8, 0]} />
                   </BarChart>
