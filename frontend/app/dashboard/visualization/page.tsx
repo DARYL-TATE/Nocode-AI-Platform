@@ -47,6 +47,11 @@ interface ErrorResponse {
   };
 }
 
+interface PieLabelProps {
+  name: string;
+  percent: number;
+}
+
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
 // ============ TYPE FOR RECHARTS VALUE ============
@@ -99,6 +104,12 @@ export default function VisualizationPage() {
       return `${(numValue / 1000).toFixed(0)}K`;
     }
     return String(numValue);
+  };
+
+  // ============ PIE LABEL FORMATTER ============
+  const renderPieLabel = ({ name, percent }: PieLabelProps): string => {
+    const percentage = percent !== undefined ? percent : 0;
+    return `${name}: ${(percentage * 100).toFixed(0)}%`;
   };
 
   // ============ FETCH DATASETS ============
@@ -431,7 +442,7 @@ export default function VisualizationPage() {
             </div>
           </div>
 
-          {/* Sales Chart - Line */}
+          {/* Sales Chart */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <FiBarChart2 className="w-5 h-5 text-blue-600" />
@@ -488,7 +499,7 @@ export default function VisualizationPage() {
                       cx="50%"
                       cy="50%"
                       labelLine={true}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      label={renderPieLabel}
                       outerRadius={100}
                       fill="#8884d8"
                       dataKey="value"
