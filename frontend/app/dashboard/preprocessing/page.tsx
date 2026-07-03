@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { FiCheck, FiActivity, FiRefreshCw, FiDownload } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
+// ============ INTERFACES ============
 interface PreprocessingSteps {
   handleMissing: string;
   removeDuplicates: boolean;
@@ -24,7 +25,16 @@ interface Results {
   };
 }
 
+interface Step {
+  id: keyof PreprocessingSteps;
+  name: string;
+  description: string;
+  options?: string[];
+}
+
+// ============ COMPONENT ============
 export default function PreprocessingPage() {
+  // ============ STATE ============
   const [preprocessingSteps, setPreprocessingSteps] = useState<PreprocessingSteps>({
     handleMissing: 'auto',
     removeDuplicates: true,
@@ -36,47 +46,49 @@ export default function PreprocessingPage() {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [results, setResults] = useState<Results | null>(null);
 
-  const steps = [
+  // ============ STEPS CONFIGURATION ============
+  const steps: Step[] = [
     {
-      id: 'handleMissing' as keyof PreprocessingSteps,
+      id: 'handleMissing',
       name: 'Handle Missing Values',
       description: 'Automatically fill or remove missing values',
       options: ['auto', 'mean', 'median', 'mode', 'drop'],
     },
     {
-      id: 'removeDuplicates' as keyof PreprocessingSteps,
+      id: 'removeDuplicates',
       name: 'Remove Duplicates',
       description: 'Remove duplicate records from dataset',
     },
     {
-      id: 'normalizeData' as keyof PreprocessingSteps,
+      id: 'normalizeData',
       name: 'Normalize Data',
       description: 'Scale numerical data to standard range',
     },
     {
-      id: 'removeOutliers' as keyof PreprocessingSteps,
+      id: 'removeOutliers',
       name: 'Remove Outliers',
       description: 'Remove statistical outliers from dataset',
     },
     {
-      id: 'encodeCategorical' as keyof PreprocessingSteps,
+      id: 'encodeCategorical',
       name: 'Encode Categorical Variables',
       description: 'Convert text categories to numerical values',
     },
   ];
 
-  const handleToggle = (step: keyof PreprocessingSteps, value?: string): void => {
+  // ============ HANDLERS ============
+  const handleToggle = (stepId: keyof PreprocessingSteps, value?: string): void => {
     if (value !== undefined) {
-      setPreprocessingSteps({ ...preprocessingSteps, [step]: value });
+      setPreprocessingSteps({ ...preprocessingSteps, [stepId]: value });
     } else {
-      setPreprocessingSteps({ 
-        ...preprocessingSteps, 
-        [step]: !preprocessingSteps[step] 
+      setPreprocessingSteps({
+        ...preprocessingSteps,
+        [stepId]: !preprocessingSteps[stepId],
       });
     }
   };
 
-  const handleProcess = async (): Promise<void> => {
+  const handleProcess = (): void => {
     setIsProcessing(true);
     // Simulate processing
     setTimeout(() => {
@@ -100,6 +112,7 @@ export default function PreprocessingPage() {
     toast.success('Export started! Your cleaned data will be downloaded shortly.');
   };
 
+  // ============ RENDER ============
   return (
     <div>
       <div className="mb-6">
@@ -108,6 +121,7 @@ export default function PreprocessingPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Preprocessing Options */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Preprocessing Steps</h2>
@@ -121,7 +135,7 @@ export default function PreprocessingPage() {
                     <h3 className="font-medium text-gray-900">{step.name}</h3>
                     <p className="text-sm text-gray-500 mt-1">{step.description}</p>
                   </div>
-                  {'options' in step ? (
+                  {step.options ? (
                     <select
                       value={preprocessingSteps[step.id] as string}
                       onChange={(e) => handleToggle(step.id, e.target.value)}
@@ -172,6 +186,7 @@ export default function PreprocessingPage() {
           </div>
         </div>
 
+        {/* Results */}
         {results && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="p-6 border-b border-gray-200">
@@ -184,7 +199,7 @@ export default function PreprocessingPage() {
                   <span className="font-medium">{results.message}</span>
                 </div>
               </div>
-              
+
               <div className="space-y-3">
                 <div className="flex justify-between py-2 border-b">
                   <span className="text-gray-600">Missing Values Filled:</span>
