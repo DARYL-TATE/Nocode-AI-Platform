@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, ChangeEvent, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import axios from 'axios';
+import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { 
   FiMail, 
@@ -14,22 +14,50 @@ import {
   FiCpu
 } from 'react-icons/fi';
 
+interface LoginFormData {
+  email: string;
+  password: string;
+}
+
+interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  user: {
+    id: number;
+    username: string;
+    email: string;
+  };
+}
+
+interface ErrorResponse {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+}
+
 export default function LoginPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: ''
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [rememberMe, setRememberMe] = useState<boolean>(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setLoading(true);
     
     try {
-      const response = await axios.post('http://localhost:8000/api/auth/login', {
+      const response = await api.post<LoginResponse>('/api/auth/login', {
         email: formData.email,
         password: formData.password
       });
@@ -37,24 +65,20 @@ export default function LoginPage() {
       const token = response.data.access_token;
       localStorage.setItem('token', token);
       
-      const userData = {
-        username: formData.email.split('@')[0],
-        email: formData.email,
-        ...response.data.user
-      };
-      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('user', JSON.stringify(response.data.user));
       
       if (rememberMe) {
         localStorage.setItem('rememberMe', 'true');
       }
       
-      toast.success(`Welcome back, ${userData.username}!`);
+      toast.success(`Welcome back, ${response.data.user.username}!`);
       
       setTimeout(() => {
         router.push('/dashboard');
       }, 500);
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Login failed');
+    } catch (error: unknown) {
+      const err = error as ErrorResponse;
+      toast.error(err.response?.data?.detail || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -63,7 +87,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center justify-center">
             <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -74,10 +97,8 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-gray-500">Sign in to your account</p>
         </div>
 
-        {/* Form Card with Border */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Field */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address
@@ -88,16 +109,16 @@ export default function LoginPage() {
                 </div>
                 <input
                   type="email"
+                  name="email"
                   required
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={handleChange}
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="address@gmail.com"
                 />
               </div>
             </div>
 
-            {/* Password Field */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Password
@@ -108,9 +129,10 @@ export default function LoginPage() {
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  name="password"
                   required
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={handleChange}
                   className="block w-full pl-10 pr-12 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="••••••••"
                 />
@@ -128,7 +150,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Remember & Forgot */}
             <div className="flex items-center justify-between">
               <label className="flex items-center">
                 <input
@@ -144,7 +165,6 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
@@ -160,9 +180,8 @@ export default function LoginPage() {
               )}
             </button>
 
-            {/* Sign Up Link */}
             <p className="text-center text-sm text-gray-600">
-              Don't have an account?{' '}
+              Dont have an account?{' '}
               <Link href="/register" className="text-blue-600 hover:text-blue-700 font-medium">
                 Create an account
               </Link>
@@ -170,7 +189,6 @@ export default function LoginPage() {
           </form>
         </div>
 
-        {/* Demo Credentials Card */}
         <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
           <p className="text-xs font-medium text-gray-500 text-center mb-2">Demo Credentials</p>
           <div className="flex justify-center gap-4 text-xs text-gray-600">

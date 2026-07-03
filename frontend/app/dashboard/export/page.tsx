@@ -30,16 +30,15 @@ export default function ExportPage() {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
   const [exportFormat, setExportFormat] = useState<'csv' | 'excel' | 'pdf'>('excel');
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState<boolean>(false);
   const [selectedData, setSelectedData] = useState<string[]>(['rawData', 'processedData', 'visualizations', 'insights', 'predictions']);
 
   useEffect(() => {
     fetchDatasets();
   }, []);
 
-  const fetchDatasets = async () => {
+  const fetchDatasets = async (): Promise<void> => {
     try {
-      const token = localStorage.getItem('token');
       const response = await api.get('/api/datasets/');
       setDatasets(response.data);
       if (response.data.length > 0) {
@@ -47,11 +46,12 @@ export default function ExportPage() {
       }
     } catch (error) {
       console.error('Failed to fetch datasets:', error);
+      toast.error('Failed to load datasets');
     }
   };
 
-  const formatFCFA = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+  const formatFCFA = (amount: number): string => {
+    return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
       currency: 'XAF',
       minimumFractionDigits: 0,
@@ -59,7 +59,6 @@ export default function ExportPage() {
     }).format(amount).replace('XAF', 'FCFA');
   };
 
-  // Generate sample data for export
   const getSampleData = () => {
     return {
       rawData: [
@@ -98,8 +97,7 @@ export default function ExportPage() {
     };
   };
 
-  // Export as CSV
-  const exportAsCSV = () => {
+  const exportAsCSV = (): void => {
     const data = getSampleData();
     let csvContent = '';
     
@@ -144,8 +142,7 @@ export default function ExportPage() {
     toast.success('CSV exported successfully!');
   };
 
-  // Export as Excel
-  const exportAsExcel = () => {
+  const exportAsExcel = (): void => {
     const data = getSampleData();
     const wb = XLSX.utils.book_new();
     
@@ -182,19 +179,16 @@ export default function ExportPage() {
     toast.success('Excel file exported successfully!');
   };
 
-  // Export as PDF
-  const exportAsPDF = () => {
+  const exportAsPDF = (): void => {
     const data = getSampleData();
     const doc = new jsPDF();
     let yPos = 20;
     
-    // Title
     doc.setFontSize(20);
     doc.setTextColor(59, 130, 246);
     doc.text('SmartML Export Report', 20, yPos);
     yPos += 10;
     
-    // Date
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
     doc.text(`Generated: ${new Date().toLocaleString()}`, 20, yPos);
@@ -221,6 +215,8 @@ export default function ExportPage() {
     }
     
     if (selectedData.includes('insights')) {
+      if (yPos > 250) { doc.addPage(); yPos = 20; }
+      
       doc.setFontSize(14);
       doc.text('Key Insights', 20, yPos);
       yPos += 10;
@@ -246,11 +242,7 @@ export default function ExportPage() {
     }
     
     if (selectedData.includes('predictions')) {
-      // Check if we need a new page
-      if (yPos > 250) {
-        doc.addPage();
-        yPos = 20;
-      }
+      if (yPos > 250) { doc.addPage(); yPos = 20; }
       
       doc.setFontSize(14);
       doc.text('Sales Predictions', 20, yPos);
@@ -271,7 +263,7 @@ export default function ExportPage() {
     toast.success('PDF exported successfully!');
   };
 
-  const handleExport = () => {
+  const handleExport = (): void => {
     if (!selectedDataset) {
       toast.error('Please select a dataset first');
       return;
@@ -313,7 +305,7 @@ export default function ExportPage() {
     { id: 'predictions', name: 'Predictions', description: 'Forecast and future trends', icon: FiTrendingUp },
   ];
 
-  const toggleSection = (sectionId: string) => {
+  const toggleSection = (sectionId: string): void => {
     if (selectedData.includes(sectionId)) {
       setSelectedData(selectedData.filter(s => s !== sectionId));
     } else {
@@ -323,13 +315,11 @@ export default function ExportPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Export Results</h1>
         <p className="text-gray-500 mt-2">Export your data, visualizations, and insights in multiple formats</p>
       </div>
 
-      {/* Dataset Selection */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Select Dataset
@@ -352,7 +342,6 @@ export default function ExportPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Export Format Options */}
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Export Format</h2>
@@ -388,7 +377,6 @@ export default function ExportPage() {
           </div>
         </div>
 
-        {/* Sections to Export */}
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Content to Export</h2>
@@ -426,7 +414,6 @@ export default function ExportPage() {
         </div>
       </div>
 
-      {/* Export Summary & Button */}
       <div className="mt-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-6 text-white">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
@@ -456,7 +443,6 @@ export default function ExportPage() {
         </div>
       </div>
 
-      {/* Export Info Cards */}
       <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
           <FiFileText className="w-5 h-5 text-blue-600 mb-2" />

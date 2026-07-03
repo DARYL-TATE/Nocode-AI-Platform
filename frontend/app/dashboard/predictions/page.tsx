@@ -18,7 +18,7 @@ import {
   FiUsers,
   FiDatabase
 } from 'react-icons/fi';
-import axios from 'axios';
+import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 
@@ -61,12 +61,20 @@ interface PredictionData {
   };
 }
 
+interface ErrorResponse {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+}
+
 export default function PredictionsPage() {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
   const [predictions, setPredictions] = useState<PredictionData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [loadingDatasets, setLoadingDatasets] = useState(true);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [loadingDatasets, setLoadingDatasets] = useState<boolean>(true);
   const [forecastPeriod, setForecastPeriod] = useState<'30days' | '60days' | '90days'>('30days');
   const [activeTab, setActiveTab] = useState<'forecast' | 'insights' | 'details'>('forecast');
 
@@ -74,17 +82,9 @@ export default function PredictionsPage() {
     fetchDatasets();
   }, []);
 
-  const fetchDatasets = async () => {
+  const fetchDatasets = async (): Promise<void> => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        window.location.href = '/login';
-        return;
-      }
-      
-      const response = await axios.get('http://localhost:8000/api/datasets/', {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      const response = await api.get('/api/datasets/');
       setDatasets(response.data);
       if (response.data.length > 0) {
         const mostRecent = response.data.sort((a: any, b: any) => 
@@ -92,20 +92,15 @@ export default function PredictionsPage() {
         )[0];
         setSelectedDataset(mostRecent);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to fetch datasets:', error);
-      if (error.response?.status === 401) {
-        localStorage.removeItem('token');
-        window.location.href = '/login';
-      } else {
-        toast.error('Failed to load datasets');
-      }
+      toast.error('Failed to load datasets');
     } finally {
       setLoadingDatasets(false);
     }
   };
 
-  const generatePredictions = async () => {
+  const generatePredictions = async (): Promise<void> => {
     if (!selectedDataset) {
       toast.error('Please select a dataset first');
       return;
@@ -115,40 +110,23 @@ export default function PredictionsPage() {
     setPredictions(null);
     
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('Please login again');
-        window.location.href = '/login';
-        return;
-      }
-      
-      const response = await axios.post('http://localhost:8000/api/predictions/generate', 
-        {
-          dataset_id: selectedDataset.id,
-          forecast_period: forecastPeriod
-        },
-        {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }
-      );
+      const response = await api.post('/api/predictions/generate', {
+        dataset_id: selectedDataset.id,
+        forecast_period: forecastPeriod
+      });
       
       setPredictions(response.data);
       toast.success(`Predictions generated from ${selectedDataset.name}!`);
-    } catch (error: any) {
-      console.error('Prediction error:', error);
-      if (error.response?.status === 401) {
-        toast.error('Session expired. Please login again.');
-        localStorage.removeItem('token');
-        setTimeout(() => window.location.href = '/login', 1500);
-      } else {
-        toast.error(error.response?.data?.detail || 'Failed to generate predictions');
-      }
+    } catch (error: unknown) {
+      const err = error as ErrorResponse;
+      console.error('Prediction error:', err);
+      toast.error(err.response?.data?.detail || 'Failed to generate predictions');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleExportToExcel = () => {
+  const handleExportToExcel = (): void => {
     if (!predictions) {
       toast.error('No predictions to export');
       return;
@@ -206,7 +184,7 @@ export default function PredictionsPage() {
     }
   };
 
-  const formatFCFA = (amount: number) => {
+  const formatFCFA = (amount: number): string => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
       currency: 'XAF',
@@ -244,13 +222,11 @@ export default function PredictionsPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Sales Predictions</h1>
         <p className="text-gray-500 mt-2">AI-powered sales forecasting based on your actual data</p>
       </div>
 
-      {/* Dataset Selection */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex-1">
@@ -316,7 +292,6 @@ export default function PredictionsPage() {
         </div>
       </div>
 
-      {/* Dataset Info */}
       {selectedDataset && !predictions && !loading && (
         <div className="bg-blue-50 rounded-xl p-4 mb-6 border border-blue-200">
           <div className="flex items-start gap-3">
@@ -332,7 +307,6 @@ export default function PredictionsPage() {
         </div>
       )}
 
-      {/* Loading State */}
       {loading && (
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
           <FiLoader className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-spin" />
@@ -341,10 +315,8 @@ export default function PredictionsPage() {
         </div>
       )}
 
-      {/* Predictions Content */}
       {predictions && !loading && (
         <div className="space-y-6">
-          {/* Confidence Score */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-6 text-white">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
@@ -364,11 +336,10 @@ export default function PredictionsPage() {
             </div>
           </div>
 
-          {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-center gap-2 mb-2">
-                
+                <FiDollarSign className="w-4 h-4 text-blue-600" />
                 <p className="text-sm text-gray-500">Expected Revenue</p>
               </div>
               <p className="text-2xl font-bold text-gray-900">{predictions.metrics.expectedRevenue}</p>
@@ -392,7 +363,7 @@ export default function PredictionsPage() {
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-center gap-2 mb-2">
-                
+                <FiDollarSign className="w-4 h-4 text-orange-600" />
                 <p className="text-sm text-gray-500">Avg Income</p>
               </div>
               <p className="text-2xl font-bold text-gray-900">{predictions.metrics.avgIncome}</p>
@@ -400,7 +371,6 @@ export default function PredictionsPage() {
             </div>
           </div>
 
-          {/* Tabs */}
           <div className="border-b border-gray-200">
             <div className="flex gap-6">
               <button
@@ -436,32 +406,19 @@ export default function PredictionsPage() {
             </div>
           </div>
 
-          {/* Forecast Tab */}
           {activeTab === 'forecast' && (
             <div className="space-y-6">
-              {/* Historical Chart - 12 Months (Jan - Dec) */}
               <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <FiBarChart2 className="w-5 h-5 text-blue-600" />
-                  Historical Sales Trend (12 Months - Based on Your Actual Data)
+                  Historical Sales Trend (From Your Actual Data)
                 </h3>
-                <div className="h-96">
+                <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={predictions.historical}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="month" 
-                        label={{ value: 'Month', position: 'bottom', offset: 0 }}
-                        interval={0}
-                      />
-                      <YAxis 
-                        tickFormatter={(value) => {
-                          if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                          if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
-                          return value.toFixed(0);
-                        }}
-                        label={{ value: 'Sales (FCFA)', angle: -90, position: 'insideLeft', offset: 10 }}
-                      />
+                      <XAxis dataKey="month" />
+                      <YAxis tickFormatter={(value) => formatFCFA(value)} />
                       <Tooltip content={<CustomTooltip />} />
                       <Legend />
                       <Area 
@@ -476,35 +433,21 @@ export default function PredictionsPage() {
                   </ResponsiveContainer>
                 </div>
                 <p className="text-xs text-gray-500 text-center mt-4">
-                  Based on actual purchase data from your uploaded dataset - Values in FCFA
+                  Based on actual purchase data from your uploaded dataset
                 </p>
               </div>
 
-              {/* Forecast Chart */}
               <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <FiTrendingUp className="w-5 h-5 text-blue-600" />
                   AI Forecast Predictions (FCFA)
                 </h3>
-                <div className="h-96">
+                <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={predictions.forecast}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="period" 
-                        label={{ value: 'Time Period', position: 'bottom', offset: 0 }}
-                        angle={-45}
-                        textAnchor="end"
-                        height={60}
-                      />
-                      <YAxis 
-                        tickFormatter={(value) => {
-                          if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                          if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
-                          return value.toFixed(0);
-                        }}
-                        label={{ value: 'Sales (FCFA)', angle: -90, position: 'insideLeft', offset: 10 }}
-                      />
+                      <XAxis dataKey="period" />
+                      <YAxis tickFormatter={(value) => formatFCFA(value)} />
                       <Tooltip content={<CustomTooltip />} />
                       <Legend />
                       <Line 
@@ -533,13 +476,12 @@ export default function PredictionsPage() {
                   </ResponsiveContainer>
                 </div>
                 <p className="text-xs text-gray-500 text-center mt-4">
-                  Forecast based on actual patterns from your dataset ({predictions.data_summary.total_rows} records) - Values in FCFA
+                  Forecast based on actual patterns from your dataset ({predictions.data_summary.total_rows} records)
                 </p>
               </div>
             </div>
           )}
 
-          {/* Insights Tab */}
           {activeTab === 'insights' && (
             <div className="space-y-6">
               <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -566,7 +508,6 @@ export default function PredictionsPage() {
                 </div>
               </div>
 
-              {/* Customer Demographics */}
               {Object.keys(predictions.data_summary.gender_distribution).length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-200 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Demographics</h3>
@@ -599,7 +540,6 @@ export default function PredictionsPage() {
             </div>
           )}
 
-          {/* Details Tab */}
           {activeTab === 'details' && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Model Performance Metrics</h3>
@@ -628,7 +568,6 @@ export default function PredictionsPage() {
             </div>
           )}
 
-          {/* Export Button */}
           <div className="flex justify-end">
             <button
               onClick={handleExportToExcel}
@@ -641,7 +580,6 @@ export default function PredictionsPage() {
         </div>
       )}
 
-      {/* No Dataset Selected */}
       {!predictions && selectedDataset && !loading && (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
           <FiCpu className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -658,7 +596,6 @@ export default function PredictionsPage() {
         </div>
       )}
 
-      {/* No Datasets */}
       {datasets.length === 0 && (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
           <FiAlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />

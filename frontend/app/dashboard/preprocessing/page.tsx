@@ -4,8 +4,28 @@ import { useState } from 'react';
 import { FiCheck, FiActivity, FiRefreshCw, FiDownload } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
+interface PreprocessingSteps {
+  handleMissing: string;
+  removeDuplicates: boolean;
+  normalizeData: boolean;
+  removeOutliers: boolean;
+  encodeCategorical: boolean;
+}
+
+interface Results {
+  success: boolean;
+  message: string;
+  stats: {
+    missingValuesFilled: number;
+    duplicatesRemoved: number;
+    outliersRemoved: number;
+    rowsBefore: number;
+    rowsAfter: number;
+  };
+}
+
 export default function PreprocessingPage() {
-  const [preprocessingSteps, setPreprocessingSteps] = useState({
+  const [preprocessingSteps, setPreprocessingSteps] = useState<PreprocessingSteps>({
     handleMissing: 'auto',
     removeDuplicates: true,
     normalizeData: false,
@@ -13,50 +33,50 @@ export default function PreprocessingPage() {
     encodeCategorical: true,
   });
 
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [results, setResults] = useState<any>(null);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [results, setResults] = useState<Results | null>(null);
 
   const steps = [
     {
-      id: 'handleMissing',
+      id: 'handleMissing' as keyof PreprocessingSteps,
       name: 'Handle Missing Values',
       description: 'Automatically fill or remove missing values',
       options: ['auto', 'mean', 'median', 'mode', 'drop'],
     },
     {
-      id: 'removeDuplicates',
+      id: 'removeDuplicates' as keyof PreprocessingSteps,
       name: 'Remove Duplicates',
       description: 'Remove duplicate records from dataset',
     },
     {
-      id: 'normalizeData',
+      id: 'normalizeData' as keyof PreprocessingSteps,
       name: 'Normalize Data',
       description: 'Scale numerical data to standard range',
     },
     {
-      id: 'removeOutliers',
+      id: 'removeOutliers' as keyof PreprocessingSteps,
       name: 'Remove Outliers',
       description: 'Remove statistical outliers from dataset',
     },
     {
-      id: 'encodeCategorical',
+      id: 'encodeCategorical' as keyof PreprocessingSteps,
       name: 'Encode Categorical Variables',
       description: 'Convert text categories to numerical values',
     },
   ];
 
-  const handleToggle = (step: string, value?: any) => {
+  const handleToggle = (step: keyof PreprocessingSteps, value?: string): void => {
     if (value !== undefined) {
       setPreprocessingSteps({ ...preprocessingSteps, [step]: value });
     } else {
       setPreprocessingSteps({ 
         ...preprocessingSteps, 
-        [step]: !preprocessingSteps[step as keyof typeof preprocessingSteps] 
+        [step]: !preprocessingSteps[step] 
       });
     }
   };
 
-  const handleProcess = async () => {
+  const handleProcess = async (): Promise<void> => {
     setIsProcessing(true);
     // Simulate processing
     setTimeout(() => {
@@ -76,7 +96,7 @@ export default function PreprocessingPage() {
     }, 2000);
   };
 
-  const handleExport = () => {
+  const handleExport = (): void => {
     toast.success('Export started! Your cleaned data will be downloaded shortly.');
   };
 
@@ -88,7 +108,6 @@ export default function PreprocessingPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Preprocessing Options */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Preprocessing Steps</h2>
@@ -104,7 +123,7 @@ export default function PreprocessingPage() {
                   </div>
                   {'options' in step ? (
                     <select
-                      value={preprocessingSteps[step.id as keyof typeof preprocessingSteps] as string}
+                      value={preprocessingSteps[step.id] as string}
                       onChange={(e) => handleToggle(step.id, e.target.value)}
                       className="ml-4 px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     >
@@ -118,16 +137,12 @@ export default function PreprocessingPage() {
                     <button
                       onClick={() => handleToggle(step.id)}
                       className={`ml-4 w-10 h-6 rounded-full transition-colors ${
-                        preprocessingSteps[step.id as keyof typeof preprocessingSteps] 
-                          ? 'bg-blue-600' 
-                          : 'bg-gray-300'
+                        preprocessingSteps[step.id] ? 'bg-blue-600' : 'bg-gray-300'
                       }`}
                     >
                       <div
                         className={`w-4 h-4 bg-white rounded-full transition-transform transform ${
-                          preprocessingSteps[step.id as keyof typeof preprocessingSteps] 
-                            ? 'translate-x-5' 
-                            : 'translate-x-1'
+                          preprocessingSteps[step.id] ? 'translate-x-5' : 'translate-x-1'
                         } mt-1`}
                       />
                     </button>
@@ -157,7 +172,6 @@ export default function PreprocessingPage() {
           </div>
         </div>
 
-        {/* Results Section */}
         {results && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="p-6 border-b border-gray-200">

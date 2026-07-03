@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useRouter } from 'next/navigation';
+import api from '@/lib/api';
 import { 
   FiUploadCloud, 
   FiCheckCircle, 
@@ -17,7 +18,6 @@ import {
   FiRefreshCw
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import axios from 'axios';
 
 interface Dataset {
   id: number;
@@ -28,15 +28,43 @@ interface Dataset {
   created_at: string;
 }
 
+interface ValidationResult {
+  success: boolean;
+  message: string;
+  dataset_id: number;
+  file: {
+    name: string;
+    size: number;
+    rows: number;
+    columns: number;
+  };
+  validation: {
+    is_valid: boolean;
+    missing_columns: string[];
+    type_issues: string[];
+    row_count: number;
+    column_count: number;
+  };
+  preview: Record<string, any>[];
+}
+
+interface ErrorResponse {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+}
+
 export default function UploadPage() {
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [validationResult, setValidationResult] = useState<any>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [uploading, setUploading] = useState<boolean>(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [fileInfo, setFileInfo] = useState<{ name: string; size: number } | null>(null);
   const [existingDatasets, setExistingDatasets] = useState<Dataset[]>([]);
-  const [loadingDatasets, setLoadingDatasets] = useState(true);
-  const [deleting, setDeleting] = useState(false);
+  const [loadingDatasets, setLoadingDatasets] = useState<boolean>(true);
+  const [deleting, setDeleting] = useState<boolean>(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -49,12 +77,9 @@ export default function UploadPage() {
     }
   }, [router]);
 
-  const fetchExistingDatasets = async () => {
+  const fetchExistingDatasets = async (): Promise<void> => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:8000/api/datasets/', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get('/api/datasets/');
       setExistingDatasets(response.data);
     } catch (error) {
       console.error('Failed to fetch datasets:', error);
@@ -63,7 +88,7 @@ export default function UploadPage() {
     }
   };
 
-  const formatFileSize = (bytes: number) => {
+  const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -71,17 +96,14 @@ export default function UploadPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const handleDeleteAllDatasets = async () => {
+  const handleDeleteAllDatasets = async (): Promise<void> => {
     if (!confirm('⚠️ WARNING: This will delete ALL your existing datasets. This action cannot be undone. Are you sure?')) {
       return;
     }
     
     setDeleting(true);
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete('http://localhost:8000/api/datasets/', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete('/api/datasets/');
       toast.success('All datasets deleted successfully!');
       setExistingDatasets([]);
       localStorage.removeItem('lastPrediction');
@@ -92,22 +114,9 @@ export default function UploadPage() {
     }
   };
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+  const onDrop = useCallback(async (acceptedFiles: File[]): Promise<void> => {
     const file = acceptedFiles[0];
     if (!file) return;
-
-    // Validate file size (max 100MB)
-    if (file.size > 100 * 1024 * 1024) {
-      toast.error('File too large. Maximum size is 100MB');
-      return;
-    }
-
-    // Validate file type
-    const validTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-    if (!validTypes.includes(file.type) && !file.name.match(/\.(csv|xlsx|xls)$/i)) {
-      toast.error('Invalid file type. Please upload CSV or Excel files.');
-      return;
-    }
 
     setFileInfo({
       name: file.name,
@@ -122,23 +131,18 @@ export default function UploadPage() {
     setValidationResult(null);
 
     try {
-      const token = localStorage.getItem('token');
-      
-      const response = await axios.post('http://localhost:8000/api/datasets/upload', formData, {
+      const response = await api.post('/api/datasets/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}`
         },
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
             const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             setUploadProgress(percent);
-            console.log(`Upload progress: ${percent}%`); // Debug log
           }
         },
       });
 
-      console.log('Upload response:', response.data);
       setValidationResult(response.data);
       
       if (response.data.success) {
@@ -147,19 +151,13 @@ export default function UploadPage() {
       } else {
         toast.error('Dataset uploaded but validation failed. Check missing columns.');
       }
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      const errorMsg = error.response?.data?.detail || error.message || 'Upload failed';
-      toast.error(errorMsg);
-      setValidationResult({ success: false, error: errorMsg });
+    } catch (error: unknown) {
+      const err = error as ErrorResponse;
+      console.error('Upload error:', err);
+      toast.error(err.response?.data?.detail || 'Upload failed');
+      setValidationResult(null);
     } finally {
       setUploading(false);
-      // Don't clear progress immediately so user sees 100%
-      setTimeout(() => {
-        if (!validationResult?.success) {
-          setUploadProgress(0);
-        }
-      }, 1000);
     }
   }, []);
 
@@ -174,17 +172,17 @@ export default function UploadPage() {
     disabled: uploading || !isAuthenticated,
   });
 
-  const clearFile = () => {
+  const clearFile = (): void => {
     setFileInfo(null);
     setValidationResult(null);
     setUploadProgress(0);
   };
 
-  const handleViewDataOverview = () => {
+  const handleViewDataOverview = (): void => {
     router.push('/dashboard/data-overview');
   };
 
-  const handleGeneratePredictions = () => {
+  const handleGeneratePredictions = (): void => {
     router.push('/dashboard/predictions');
   };
 
@@ -201,13 +199,11 @@ export default function UploadPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Upload Dataset</h1>
         <p className="text-gray-500 mt-2">Upload your CSV or Excel file to start analyzing</p>
       </div>
 
-      {/* Existing Datasets Warning */}
       {existingDatasets.length > 0 && !validationResult && (
         <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
@@ -235,9 +231,7 @@ export default function UploadPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column - Upload Area */}
         <div className="lg:col-span-2">
-          {/* Drag & Drop Zone */}
           <div
             {...getRootProps()}
             className={`
@@ -272,22 +266,15 @@ export default function UploadPage() {
                   <h3 className="text-xl font-semibold text-gray-800 mb-2">Drag & drop your file</h3>
                   <p className="text-gray-500 mb-4">or <span className="text-blue-600 font-medium">browse</span> from your computer</p>
                   <div className="flex gap-4 text-sm text-gray-400">
-                    <span className="flex items-center gap-1">
-                      <FiFile className="w-3 h-3" /> CSV
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <FiFile className="w-3 h-3" /> XLSX
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <FiFile className="w-3 h-3" /> XLS
-                    </span>
+                    <span className="flex items-center gap-1"><FiFile className="w-3 h-3" /> CSV</span>
+                    <span className="flex items-center gap-1"><FiFile className="w-3 h-3" /> XLSX</span>
+                    <span className="flex items-center gap-1"><FiFile className="w-3 h-3" /> XLS</span>
                   </div>
                 </>
               )}
             </div>
           </div>
 
-          {/* Upload Progress - FIXED */}
           {uploading && (
             <div className="mt-6 bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-3">
@@ -311,7 +298,6 @@ export default function UploadPage() {
             </div>
           )}
 
-          {/* File Info & Cancel */}
           {fileInfo && !uploading && !validationResult && (
             <div className="mt-4 bg-blue-50 rounded-xl border border-blue-200 p-4">
               <div className="flex items-center justify-between">
@@ -334,7 +320,6 @@ export default function UploadPage() {
             </div>
           )}
 
-          {/* Success Actions after Upload */}
           {validationResult?.success && (
             <div className="mt-6 bg-green-50 rounded-xl border border-green-200 p-6">
               <div className="flex items-center gap-3 mb-4">
@@ -375,9 +360,7 @@ export default function UploadPage() {
           )}
         </div>
 
-        {/* Right Column - Info & Requirements */}
         <div className="space-y-6">
-          {/* Current Datasets Card */}
           {existingDatasets.length > 0 && !validationResult && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
@@ -418,7 +401,6 @@ export default function UploadPage() {
             </div>
           )}
 
-          {/* Requirements Card */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <FiBarChart2 className="w-4 h-4 text-blue-600" />
@@ -448,7 +430,6 @@ export default function UploadPage() {
             </div>
           </div>
 
-          {/* Sample Data Card */}
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100 p-6">
             <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
               <FiFile className="w-4 h-4 text-blue-600" />
@@ -485,7 +466,6 @@ export default function UploadPage() {
             </button>
           </div>
 
-          {/* What Happens Next Card */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <FiTrendingUp className="w-4 h-4 text-blue-600" />
@@ -521,7 +501,6 @@ export default function UploadPage() {
         </div>
       </div>
 
-      {/* Validation Error Details */}
       {validationResult && !validationResult.success && validationResult.validation && (
         <div className="mt-8 bg-red-50 rounded-xl border border-red-200 p-6">
           <h3 className="font-semibold text-red-800 mb-3 flex items-center gap-2">
@@ -550,25 +529,6 @@ export default function UploadPage() {
               </ul>
             </div>
           )}
-          <button
-            onClick={clearFile}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-          >
-            Try Again
-          </button>
-        </div>
-      )}
-
-      {/* Error Message */}
-      {validationResult && !validationResult.success && validationResult.error && (
-        <div className="mt-8 bg-red-50 rounded-xl border border-red-200 p-6">
-          <div className="flex items-center gap-3">
-            <FiAlertCircle className="w-6 h-6 text-red-600" />
-            <div>
-              <h3 className="font-semibold text-red-800">Upload Failed</h3>
-              <p className="text-sm text-red-700">{validationResult.error}</p>
-            </div>
-          </div>
           <button
             onClick={clearFile}
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"

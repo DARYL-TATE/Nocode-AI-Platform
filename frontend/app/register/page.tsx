@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, ChangeEvent, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import axios from 'axios';
+import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { 
   FiUser, 
@@ -15,20 +15,59 @@ import {
   FiCpu
 } from 'react-icons/fi';
 
+interface RegisterFormData {
+  username: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+interface RegisterResponse {
+  success: boolean;
+  id: number;
+  username: string;
+  email: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  user: {
+    id: number;
+    username: string;
+    email: string;
+  };
+}
+
+interface ErrorResponse {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+}
+
 export default function RegisterPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<RegisterFormData>({
     username: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [agreeTerms, setAgreeTerms] = useState<boolean>(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     
     if (formData.password !== formData.confirmPassword) {
@@ -44,7 +83,7 @@ export default function RegisterPage() {
     setLoading(true);
     
     try {
-      await axios.post('http://localhost:8000/api/auth/register', {
+      await api.post<RegisterResponse>('/api/auth/register', {
         username: formData.username,
         email: formData.email,
         password: formData.password
@@ -53,7 +92,7 @@ export default function RegisterPage() {
       toast.success('Account created successfully!');
       
       // Auto login after registration
-      const loginResponse = await axios.post('http://localhost:8000/api/auth/login', {
+      const loginResponse = await api.post<LoginResponse>('/api/auth/login', {
         email: formData.email,
         password: formData.password
       });
@@ -66,8 +105,9 @@ export default function RegisterPage() {
       
       toast.success('Welcome to SmartML!');
       router.push('/dashboard');
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Registration failed');
+    } catch (error: unknown) {
+      const err = error as ErrorResponse;
+      toast.error(err.response?.data?.detail || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -87,7 +127,7 @@ export default function RegisterPage() {
           <p className="mt-1 text-sm text-gray-500">Get started with SmartML</p>
         </div>
 
-        {/* Form Card with Border */}
+        {/* Form Card */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Username Field */}
@@ -101,11 +141,12 @@ export default function RegisterPage() {
                 </div>
                 <input
                   type="text"
+                  name="username"
                   required
                   value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  onChange={handleChange}
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Daryl"
+                  placeholder="johndoe"
                 />
               </div>
             </div>
@@ -121,11 +162,12 @@ export default function RegisterPage() {
                 </div>
                 <input
                   type="email"
+                  name="email"
                   required
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={handleChange}
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="daryl@gmail.com"
+                  placeholder="you@example.com"
                 />
               </div>
             </div>
@@ -141,9 +183,10 @@ export default function RegisterPage() {
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  name="password"
                   required
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={handleChange}
                   className="block w-full pl-10 pr-12 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="••••••••"
                 />
@@ -161,12 +204,57 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            
-                
-                
-          
-             
-           
+            {/* Confirm Password Field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FiLock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  name="confirmPassword"
+                  required
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="block w-full pl-10 pr-12 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  {showConfirmPassword ? (
+                    <FiEyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  ) : (
+                    <FiEye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Terms Agreement */}
+            <div className="flex items-start">
+              <input
+                type="checkbox"
+                checked={agreeTerms}
+                onChange={(e) => setAgreeTerms(e.target.checked)}
+                className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label className="ml-2 text-sm text-gray-600">
+                I agree to the{' '}
+                <Link href="/terms" className="text-blue-600 hover:text-blue-700">
+                  Terms of Service
+                </Link>{' '}
+                and{' '}
+                <Link href="/privacy" className="text-blue-600 hover:text-blue-700">
+                  Privacy Policy
+                </Link>
+              </label>
+            </div>
 
             {/* Submit Button */}
             <button
