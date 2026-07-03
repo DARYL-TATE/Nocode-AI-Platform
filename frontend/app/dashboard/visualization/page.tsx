@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  AreaChart, Area
+  AreaChart, Area,
+  PieLabelRenderProps
 } from 'recharts';
 import { 
   FiBarChart2, FiTrendingUp, FiPieChart, FiRefreshCw, 
@@ -102,9 +103,11 @@ export default function VisualizationPage() {
   };
 
   // ============ PIE LABEL ============
-  const renderPieLabel = (entry: { name: string; value: number; percent: number }): string => {
-    const percentage = entry.percent !== undefined ? entry.percent : 0;
-    return `${entry.name}: ${(percentage * 100).toFixed(0)}%`;
+  const renderPieLabel = (props: PieLabelRenderProps): string => {
+    const { name, percent } = props;
+    const nameStr = typeof name === 'string' ? name : '';
+    const percentNum = typeof percent === 'number' ? percent : 0;
+    return `${nameStr}: ${(percentNum * 100).toFixed(0)}%`;
   };
 
   // ============ FETCH DATASETS ============
