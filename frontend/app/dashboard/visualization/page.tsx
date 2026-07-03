@@ -9,7 +9,7 @@ import {
 import { 
   FiBarChart2, FiTrendingUp, FiPieChart, FiRefreshCw, 
   FiDatabase, FiAlertCircle, FiLoader, FiDownload,
-  FiDollarSign, FiUsers
+  FiDollarSign, FiUsers, FiCheckCircle
 } from 'react-icons/fi';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
