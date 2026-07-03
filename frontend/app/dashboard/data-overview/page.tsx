@@ -136,7 +136,7 @@ export default function DataOverview() {
 
   // ============ HANDLE EXPORT ============
   const handleExportToExcel = (): void => {
-    if (!datasetDetail || datasetDetail.data.length === 0) {
+    if (!datasetDetail || !datasetDetail.data || datasetDetail.data.length === 0) {
       toast.error('No data to export');
       return;
     }
@@ -160,7 +160,7 @@ export default function DataOverview() {
       value !== null && value !== undefined && 
       String(value).toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }) ?? [];
+  }) || [];
 
   // ============ PAGINATION ============
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
@@ -175,7 +175,7 @@ export default function DataOverview() {
   ];
 
   // ============ COLUMN HEADERS ============
-  const columnHeaders = datasetDetail?.data?.length > 0 
+  const columnHeaders = datasetDetail?.data && datasetDetail.data.length > 0 
     ? Object.keys(datasetDetail.data[0]) 
     : [];
 
@@ -289,7 +289,7 @@ export default function DataOverview() {
           <FiLoader className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-spin" />
           <p className="text-gray-600">Loading dataset content...</p>
         </div>
-      ) : datasetDetail && datasetDetail.data.length > 0 ? (
+      ) : datasetDetail && datasetDetail.data && datasetDetail.data.length > 0 ? (
         <>
           {/* Dataset Info */}
           <div className="bg-blue-50 rounded-xl p-4 mb-6 border border-blue-200">
