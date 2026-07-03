@@ -47,11 +47,6 @@ interface ErrorResponse {
   };
 }
 
-interface PieLabelProps {
-  name: string;
-  percent: number;
-}
-
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
 // ============ TYPE FOR RECHARTS VALUE ============
@@ -106,10 +101,10 @@ export default function VisualizationPage() {
     return String(numValue);
   };
 
-  // ============ PIE LABEL FORMATTER ============
-  const renderPieLabel = ({ name, percent }: PieLabelProps): string => {
-    const percentage = percent !== undefined ? percent : 0;
-    return `${name}: ${(percentage * 100).toFixed(0)}%`;
+  // ============ PIE LABEL ============
+  const renderPieLabel = (entry: { name: string; value: number; percent: number }): string => {
+    const percentage = entry.percent !== undefined ? entry.percent : 0;
+    return `${entry.name}: ${(percentage * 100).toFixed(0)}%`;
   };
 
   // ============ FETCH DATASETS ============
